@@ -1,0 +1,345 @@
+﻿@page "/"
+@using BlazorInputFile
+@using WebApplication2.Data
+@using WebApplication2DB.Data.Visitor
+@using Tesseract;
+@using System.IO; 
+@using System.Drawing;
+@using System.Drawing.Drawing2D;
+@using System.Drawing.Imaging;
+@using System.Text.RegularExpressions;
+@inherits OwningComponentBase<VisitorService>
+@inject IJSRuntime JSRuntime
+
+<div style=" background-repeat: repeat-x; background-image: url(css/covid_banner2.jpg)">
+
+</div>
+<img class="img-fluid" style="display: block; margin-left: auto; margin-right: auto; width: 50%;" src="css/covid_banner2.jpg" />
+
+<br />
+<br />
+
+<h2 class="badge-info" style="display: flex; justify-content: center;">NCA Visitors Log</h2>
+<br />
+<br />
+
+
+<EditForm Model="@visitor" OnValidSubmit="saveVisitor">
+    <div class="container">
+
+        <div class="row">
+            <div class="col-sm">
+                <div class="form-group">
+                    <label for="fname">First Name:</label>
+                    <input @bind="visitor.FirstName" type="text" class="form-control"
+                           id="fname" aria-describedby="emailHelp" placeholder="First Name" required>
+                </div>
+                <div class="form-group">
+                    <label for="lname">Last Name:</label>
+                    <input @bind="visitor.LastName" type="text" class="form-control"
+                           id="lname" aria-describedby="emailHelp" placeholder="Last Name" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone:</label>
+                    <input @bind="visitor.Phone" type="tel" class="form-control"
+                           id="phone" aria-describedby="emailHelp" placeholder="2110921061708">
+                    <small id="phoneHelp" class="form-text text-muted">please enter a valid phone number</small>
+                </div>
+                <div class="form-group">
+                    <label for="organization">Organization:</label>
+                    <input @bind="visitor.Organization" type="text" class="form-control"
+                           id="organization" aria-describedby="emailHelp" placeholder="Organization">
+                    <small id="organization" class="form-text text-muted">please enter your organization</small>
+                </div>
+
+            </div>
+            <div class="col-sm">
+                <div class="form-group">
+                    <label for="visit">Visiting:</label>
+                    <input @bind="visitor.Visiting" type="text" class="form-control"
+                           id="visit" aria-describedby="emailHelp" placeholder="Person to visit">
+                    <small id="visitHelp" class="form-text text-muted">enter the person you are here to visit</small>
+                </div>
+                <div class="form-group">
+                    <label for="department">Department</label>
+                    <select @bind="visitor.Department" class="form-control" id="department">
+                        <option>No Department</option>
+                        <option>Human Resources</option>
+                        <option>Admin and Finance</option>
+                        <option>Spectrum</option>
+                        <option>Technical Service</option>
+                        <option>Legal affairs</option>
+                        <option>USAF</option>
+                        <option>Office of Director General</option>
+                        <option>Planning and Bussiness Development</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="desc">Reason for Visit:</label>
+                    <textarea @bind="visitor.Description" class="form-control"
+                              id="desc" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:30px">
+            <div class="d-flex justify-content-center">
+                <input style="display:none" type="radio" class="btn-check" name="options-outlined" id="success-outlined" autocomplete="off" checked @onclick="ToggleNoID">
+                <label class="btn btn-outline-success" for="success-outlined">Visitor Has ID</label>
+
+                <input style="display:none" type="radio" class="btn-check" name="options-outlined" id="danger-outlined" autocomplete="off" @onclick="ToggleNoID">
+                <label class="btn btn-outline-danger" for="danger-outlined">Visitor Had No ID</label>
+            </div>
+            @if (noID)
+            {
+                <div class="d-flex justify-content-around ">
+                    <div class="card" style="width: 24rem;">
+                        @if (visitor.Image != null)
+                        {
+                            <img style="width: 22rem;" class="rounded mx-auto d-block" id="@options.PhotoID" src="data:image/png;base64,@(Convert.ToBase64String(visitor.Image))" />
+                        }
+                        else
+                        {
+                            <img style="width: 22rem;" class="rounded mx-auto d-block" src="css/ngo_image_exm.jpg" id="@options.PhotoID" alt="Card image cap">
+                        }
+                        <div class="input-group">
+                            <div class="custom-file">
+                                <InputFile type="file" class="custom-file-input" id="inputGroupFile04" OnChange="HandleFileSelected" />
+                                @if (file != null)
+                                {
+
+                                }
+                                <label class="custom-file-label" for="inputGroupFile04">Choose file</label>
+                            </div>
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary" type="button">Button</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex justify-content-around ">
+
+                    <div class="card">
+                        @if (visitor.Image != null)
+                        {
+                            <img style="width: 22rem;" class="rounded mx-auto d-block" id="@options.PhotoID" src="data:image/png;base64,@(Convert.ToBase64String(visitor.Image))" />
+                        }
+                        else
+                        {
+                            <img style="width: 22rem;" class="rounded mx-auto d-block" src="css/ngo_image_exm.jpg" id="@options.PhotoID" alt="Card image cap">
+                        }
+                    </div>
+                    <div>
+                        <video class="rounded mx-auto d-block" id="@options.VideoID"
+                               width="@options.Width">
+                            Video stream not available.
+                        </video>
+                        <div>
+                            <br />
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Start">Start</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Capture">Capture</button>
+
+                        </div>
+                    </div>
+
+                </div>
+            }
+
+        </div>
+
+        <div style="margin-top:30px" class="d-flex justify-content-center">
+            <!--<input class="btn btn-primary" type="submit"
+                value="Check In" @onclick="saveVisitor"> -->
+            <button class="btn btn-primary" type="submit">Check In</button>
+        </div>
+
+        <canvas class="rounded mx-auto d-block"
+                id="@options.CanvasID"
+                style="background-color:lightblue; visibility:hidden;"
+                width="@options.Width">
+        </canvas>
+    </div>
+</EditForm>
+<br />
+<br />
+
+
+
+<!-- Modal -->
+<WebApplication2.Pages.Modal_Pages.Check_In_Successfully @ref="modal">
+
+</WebApplication2.Pages.Modal_Pages.Check_In_Successfully>
+
+<!-- <button class="btn btn-primary" @onclick="@(() => modal.Open())">Modal!</button>
+
+
+        <WebApplication2.Pages.Modal_Pages.CheckInModal @ref="modal">
+
+        </WebApplication2.Pages.Modal_Pages.CheckInModal>-->
+
+
+@code {
+    int numLines;
+    IFileListEntry file;
+    Visitor visitor = new Visitor();
+    byte[] imageData;
+    bool noID = false;
+    Pix image;
+
+    private Modal_Pages.Check_In_Successfully modal { get; set; }
+
+
+
+    WebCamOptions options = new WebCamOptions()
+    {
+        CanvasID = "canvas",
+        VideoID = "video",
+        PhotoID = "photo",
+
+
+    };
+
+    public void ToggleNoID()
+    {
+        if (noID)
+        {
+            noID = false;
+        }
+        else { noID = true; }
+    }
+
+    async Task HandleFileSelected(IFileListEntry[] files)
+    {
+        file = files.FirstOrDefault();
+        visitor.Image = await ReadFully(file.Data);
+        options.Filter =
+      "contrast(1.4) sepia(0.2) blur(3px) saturate(200%) hue-rotate(200deg)";
+        options.Width = 480;
+
+        image = Pix.LoadFromMemory(visitor.Image);
+        //image = Pix.LoadFromFile("/css/sstestid.png");
+        TesseractEngine engine = new TesseractEngine("./tessData", "eng", EngineMode.Default);
+        Page page = engine.Process(image, PageSegMode.Auto);
+        string mytext = page.GetText();
+
+
+        String[] results = Regex.Split(mytext.Trim(), @"\s*[\n,;]\s*");
+
+        Console.WriteLine(results.Length);
+        for (int i = 0; i <results.Length; i++)
+        {
+            Console.WriteLine(results[i]);
+            if(Regex.IsMatch(results[i],
+                Regex.Escape("surname"),
+                RegexOptions.IgnoreCase))
+            {
+                visitor.LastName = results[i+1];
+            }
+            if (Regex.IsMatch(results[i],
+                Regex.Escape("given name"),
+                RegexOptions.IgnoreCase))
+            {
+                visitor.FirstName = results[i + 1];
+            }
+        }
+
+    }
+
+    public void proccessUploadImg(byte[] img)
+    { 
+    }
+
+    public void getNameFromStr(string str)
+    {
+
+    }
+
+    public string processTessaract()
+    {
+
+        image = Pix.LoadFromFile("/css/tessaract_testing.png");
+        TesseractEngine engine = new TesseractEngine("./tessData", "eng", EngineMode.Default);
+        Page page = engine.Process(image,PageSegMode.Auto);
+        string mytext = page.GetText();
+        Console.WriteLine(mytext);
+        return mytext;
+    }
+
+    public async Task saveVisitor()
+    {
+
+        modal.Message("Thank You: "+
+             visitor.FirstName + " " + visitor.LastName);
+        modal.Open();
+
+        Visitor tempVisitor = new Visitor();
+        tempVisitor.FirstName = visitor.FirstName;
+        tempVisitor.LastName = visitor.LastName;
+        tempVisitor.Phone = visitor.Phone;
+        tempVisitor.Organization = visitor.Organization;
+        tempVisitor.Department = visitor.Department;
+        tempVisitor.Description = visitor.Description;
+        tempVisitor.Image = visitor.Image;
+        tempVisitor.CheckIn = System.DateTime.Now;
+
+
+        var result = await @Service.CreateVisitorAsync(tempVisitor);
+
+        visitor.FirstName = "";
+        visitor.LastName = "";
+        visitor.Phone = null;
+        visitor.Organization = "";
+        visitor.Department = "No Department";
+        visitor.Description = "";
+        visitor.Image = null;
+
+
+    }
+
+
+
+
+    public async Task<byte[]> ReadFully(System.IO.Stream input)
+    {
+        byte[] buffer = new byte[16 * 1024];
+        using (System.IO.MemoryStream ms = new System.IO.MemoryStream())
+        {
+            int read;
+            while ((read = await input.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                ms.Write(buffer, 0, read);
+            }
+            return ms.ToArray();
+        }
+    }
+
+
+
+    public async Task Start()
+    {
+        await JSRuntime.InvokeVoidAsync("WebCamFunctions.start", options);
+
+    }
+    string newsrc = null;
+
+    public async Task Capture()
+    {
+
+        string any = await JSRuntime.InvokeAsync<string>("WebCamFunctions.takepicture");
+        string marker = "data:image/png;base64,";
+        string dataWithoutJpegMarker = any.Replace(marker, String.Empty);
+        byte[] filebytes = Convert.FromBase64String(dataWithoutJpegMarker);
+        visitor.Image = filebytes;
+
+    }
+
+    public async Task Test()
+    {
+        string task = await JSRuntime.InvokeAsync<string>("WebCamFunctions.getValue");
+    }
+
+}

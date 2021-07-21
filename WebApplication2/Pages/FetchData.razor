@@ -1,0 +1,133 @@
+﻿@page "/fetchdata"
+@using WebApplication2.Data
+@using WebApplication2DB.Data.Visitor
+@inherits OwningComponentBase<VisitorService>
+<h1>Check In Log</h1>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md">
+            <div class="input-group">
+                <input type="search" class="form-control rounded" placeholder="Name Search" aria-label="Name Search"
+                       aria-describedby="search-addon" @bind="@searchName"/>
+                <button type="button" class="btn btn-outline-primary" @onclick="GetVisitorsByName">search</button>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="input-group">
+          
+                <div class="row">
+
+                    <div class="col-md">
+                    <div>
+                            <label for="startDate">Start Date</label>
+                            <input type="date" aria-describedby="search-addon"  id="startDate" @bind="@startDate" />
+                    </div> 
+                    <div>   
+                        <label for="endDate">End Date.</label>
+                        <input type="date"   aria-describedby="search-addon"  id="endDate" @bind="@endDate" />
+                    </div>
+                    </div>
+                   
+                        <div  class="justify-content-sm-center">
+                            <button type="button" class="btn btn-outline-primary" @onclick="GetVisitorDateRange">search</button>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@if (visitors == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">First Name</th>
+                <th scope="col">Last Name</th>
+                <th scope="col">Description</th>
+                <th scope="col">Identification Card</th>
+                <th scope="col">Check In Time</th>
+                <th scope="col">Check Out Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var visitor in visitors)
+            {
+                <tr>
+                    <td>@visitor.FirstName</td>
+                    <td>@visitor.LastName</td>
+                    <td>@visitor.Description</td>
+                    <td>
+                        @if (visitor.Image != null)
+                        {
+                            <img class="img-thumbnail" src="data:image/png;base64,@(Convert.ToBase64String(visitor.Image))" width="100" height="100" />
+                        }
+                        else
+                        {
+                            <img class="img-thumbnail" src="css/ngo_image_exm.jpg" alt="Card image cap" width="100" height="100">
+                        }
+
+                    </td>
+                    <td>@visitor.CheckIn</td>
+                    @if (visitor.CheckOut != null)
+                    {
+                        <td>@visitor.CheckOut</td>
+                    }
+                    else
+                    {
+                        visitor.CheckOut = System.DateTime.Now;
+                        <td><button class="btn btn-primary" @onclick="(() => UpdateVisitor(visitor))">Sign Out</button></td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+
+
+    <WebApplication2.Pages.Modal_Pages.Check_Out_Successfully @ref="modal">
+
+    </WebApplication2.Pages.Modal_Pages.Check_Out_Successfully>
+}
+
+@code {
+
+    List<Visitor> visitors;
+    Visitor tempVisitor;
+    String dateTime;
+    DateTime startDate = System.DateTime.Today.AddDays(-1);
+    DateTime endDate = System.DateTime.Today;
+    string searchName;
+    private Modal_Pages.Check_Out_Successfully modal { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        visitors = await @Service.GetVisitorInfoAsync();
+    }
+
+    public async Task UpdateVisitor(Visitor visitor)
+    {
+        var result = await @Service.UpdateVisitor(visitor);
+        visitors = await @Service.GetVisitorInfoAsync();
+        modal.Message("Thank You: "+visitor.FirstName+" "+visitor.LastName);
+        modal.Open();
+
+    }
+
+    public async Task GetVisitorsByName()
+    {
+        visitors = visitors = await @Service.GetVisitorByName(searchName);
+    }
+
+    public async Task GetVisitorDateRange()
+    {
+        visitors = await @Service.GetVisitorDateRange(startDate, endDate);
+    }
+}
